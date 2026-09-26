@@ -1,4 +1,11 @@
 #version 100
+// 【用途】鱼眼 / 桶形畸变：按屏幕归一化坐标的半径做非线性重映射，产生镜头被"拉伸鼓起"的
+//         视觉效果，常用于高能段落或转场冲击。
+// 【使用位置】prpr 内置后处理预设，注册于 `prpr/src/core/effect.rs:11-22` 的 SHADERS 表
+//         （预设名 `fisheye`），由 `Effect::render`（`prpr/src/core/effect.rs:155-184`）执行。
+// 【如何被引用】谱面 `extra.json` 的 effect 项（解析见 `prpr/src/parse/extra.rs:153-178`）。
+// 【可调 uniform】畸变强度等参数见文件内 uniform 声明；默认值由声明行尾的 `// %值%`
+//         注释给出，经 `Effect::new` 的 `DEF_REGEX`（`prpr/src/core/effect.rs:87`）解析。
 // Adapted from https://www.shadertoy.com/view/4s2GRR
 precision mediump float;
 

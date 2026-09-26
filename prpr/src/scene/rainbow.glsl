@@ -1,4 +1,11 @@
 #version 100
+// 【用途】彩虹（rainbow）mod 的视觉效果：按 `time` 循环地把画面的色相整体旋转，
+//         让所有音符/判定线的配色持续流转，属于"玩法 mod"而非谱面特效。
+// 【使用位置】由 `prpr/src/scene/game.rs:276-281` 在 `Mods::RAINBOW` 生效时以
+//         `include_str!("rainbow.glsl")` 构造一个 `Effect` 追加进 `chart.extra.effects`，
+//         因而在 `Chart::render`（`prpr/src/core/chart.rs:172-183`）的谱面后处理阶段执行。
+// 【可调 uniform】`time` 由 `Effect::new` 自动补入（`prpr/src/core/effect.rs:121-123`），
+//         无需外部设置；其余参数见文件内 uniform 声明。
 precision highp float;
 
 varying lowp vec2 uv;

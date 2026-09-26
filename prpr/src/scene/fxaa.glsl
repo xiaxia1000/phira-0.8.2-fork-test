@@ -1,4 +1,13 @@
 #version 100
+// 【用途】FXAA（Fast Approximate Anti-Aliasing）快速近似抗锯齿：对全屏图像做边缘检测并沿
+//         边缘方向做定向模糊，以低开销消除 MSAA 之外/之上的锯齿。它作用于**最终合成画面**，
+//         因此与 `Config::sample_count`（MSAA）是互补的两条抗锯齿路径。
+// 【使用位置】由 `prpr/src/scene/game.rs:265-269` 在 `Config::fxaa` 为真时以
+//         `include_str!("fxaa.glsl")` 构造一个 `Effect` 追加进 `chart.extra.effects`，
+//         因此在 `Chart::render`（`prpr/src/core/chart.rs:172-183`）的谱面后处理阶段执行。
+//         这是一个"无条件注入的内置 effect"，谱面作者无法通过 extra.json 直接引用它。
+// 【可调 uniform】见文件内 uniform 声明（边缘阈值等）；由于由代码直接构造，
+//         其 uniform 默认值取自本文件声明行尾的 `// %值%` 注释。
 // Adapted from https://github.com/mattdesl/glsl-fxaa
 precision highp float;
 

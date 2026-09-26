@@ -1,3 +1,11 @@
+//! 谱面标签系统。
+//!
+//! 标签分两类：**分区标签**（`DIVISION_TAGS`，互斥，表示谱面归类）与**自定义标签**
+//! （用户自由增删，用于检索）。`Tags` 管理一组自定义标签的增删与自动换行布局；
+//! `TagsDialog` 是编辑/筛选对话框：编辑模式下确定后写回谱面元信息，
+//! 筛选模式下再加上「不想要的标签」与若干开关，结果经 `confirmed` 等公开字段回传给页面。
+//! 对话框与页面之间不靠返回值传递，而是页面每帧读取其公开字段来推进流程。
+
 prpr_l10n::tl_file!("tags");
 
 use crate::{client::Permissions, page::Fader};
@@ -11,16 +19,25 @@ use prpr::{
 };
 use smallvec::{smallvec, SmallVec};
 
+/// 分区标签集合。分区是互斥的「谱面类别」，与普通标签分开存储；
+/// 索引 0 同时作为默认分区。这些名字不允许再作为自定义标签添加（见 `Tags::add`）。
 const DIVISION_TAGS: &[&str] = &["regular", "troll", "plain", "visual"];
 
+/// 一组自定义标签的编辑状态：文本、命中按钮与「新增」按钮一一对应。
 pub struct Tags {
+    /// 输入框请求 id：同一帧可能存在多个标签区（如「想要」与「不想要」），用它区分回传的输入。
     input_id: &'static str,
+    /// 当前标签文本。
     tags: Vec<String>,
+    /// 与 `tags` 逐项对应的命中按钮（删除用），始终保持与 `tags` 等长。
     btns: Vec<DRectButton>,
+    /// 「+」新增按钮。
     add: DRectButton,
 }
 
+// 标签集的增删与布局。核心不变量：`tags` 与 `btns` 长度始终一致，任何增删都成对进行。
 impl Tags {
+    /// 创建空标签集；`input_id` 用于向全局输入系统请求文本输入框。
     pub fn new(input_id: &'static str) -> Self {
         Self {
             input_id,
@@ -30,10 +47,13 @@ impl Tags {
         }
     }
 
+    /// 返回当前标签切片。
     pub fn tags(&self) -> &[String] {
         &self.tags
     }
 
+    /// 追加一个标签：先去除首尾空白；分区标签不允许作为自定义标签（直接忽略）；
+    /// 同时 push 一个按钮以维持与 `tags` 的长度一致。
     pub fn add(&mut self, s: String) {
         let s = s.trim().to_owned();
         if DIVISION_TAGS.contains(&s.as_str()) {
@@ -43,6 +63,14 @@ impl Tags {
         self.btns.push(DRectButton::new());
     }
 
+    /// 用给定列表重建标签，并返回其中解析出的分区标签。
+    ///
+    /// 语义：传入的列表中若含分区标签，则把它从自定义标签中剔除，并作为「当前分区」返回；
+    /// 若没有任何分区标签则回退到 `DIVISION_TAGS[0]`（默认分区）。
+    /// 同时重建按钮列表以对齐新的标签数量。
+    ///
+    /// # Returns
+    /// 解析出的分区标签（`&'static str`）。
     pub fn set(&mut self, tags: Vec<String>) -> &'static str {
         let mut div = DIVISION_TAGS[0];
         let tags: Vec<_> = tags
@@ -62,6 +90,9 @@ impl Tags {
         div
     }
 
+    /// 命中检测：点到某个标签按钮则删除该标签（文本与按钮同步删除）并返回 true；
+    /// 否则点到「+」则请求输入框（用户输入经 `TagsDialog::update` 回传到这里）。
+    /// 返回事件是否被消费。
     pub fn touch(&mut self, touch: &Touch, t: f32) -> bool {
         for (index, btn) in self.btns.iter_mut().enumerate() {
             if btn.touch(touch, t) {
@@ -77,6 +108,12 @@ impl Tags {
         false
     }
 
+    /// 绘制标签的流式布局（自动换行）并返回整体高度。
+    ///
+    /// 布局规则：每个标签宽度按文本实测宽度并夹在 `[0.08, tmw]` 之间（过短不至于太小、过长截断），
+    /// 放下一个标签若超出可用宽度 `mw` 则换行（`x` 归零、行高累加）；每个标签四周留
+    /// `margin + pad` 的外扩内边距。最后把「+」按钮也当作一个标签绘制。
+    /// 返回的 `h + row_height` 供对话框计算滚动内容总高。
     pub fn render(&mut self, ui: &mut Ui, mw: f32, t: f32) -> f32 {
         let row_height = 0.1;
         let tmw = 0.3;
@@ -102,6 +139,8 @@ impl Tags {
         h + row_height
     }
 
+    /// 校验并添加用户输入的标签：只允许字母数字与连字符 `-`（否则弹出 `invalid-tag` 错误提示），
+    /// 且与已有标签去重后才真正加入。
     pub fn try_add(&mut self, s: &str) {
         if !s.chars().all(|it| it == '-' || it.is_alphanumeric()) {
             show_message(tl!("invalid-tag")).error();
@@ -113,33 +152,61 @@ impl Tags {
     }
 }
 
+/// 标签编辑/筛选对话框。
+///
+/// 两种模式由 `unwanted` 是否为 `Some` 决定：`None` 为编辑模式（给谱面增删标签+选分区），
+/// `Some` 为筛选模式（增加「不想要的标签」与「只看我的/未审核/稳定请求」等开关）。
+/// 结果通过公开字段回传给页面：`confirmed` 表示确认/取消，`show_rating` 请求打开评分筛选。
 pub struct TagsDialog {
+    /// 弹窗入场/退场补间。
     fader: Fader,
+    /// 是否处于显示（前进）状态。
     show: bool,
 
+    /// 内容滚动容器（标签过多/开关较多时滚动）。
     scroll: Scroll,
+    /// 「想要」标签编辑区。
     pub tags: Tags,
+    /// 「不想要的」标签编辑区；`Some` 表示处于筛选模式。
     pub unwanted: Option<Tags>,
 
+    /// 当前选中的分区标签。
     pub division: &'static str,
+    /// 分区按钮（与 `DIVISION_TAGS` 一一对应）。
     div_btns: Vec<DRectButton>,
 
+    /// 「只看我的」筛选开关按钮。
     pub btn_me: DRectButton,
+    /// 该开关是否开启。
     pub show_me: bool,
+    /// 「只看未审核」筛选开关按钮。
     pub btn_unreviewed: DRectButton,
+    /// 该开关是否开启。
     pub show_unreviewed: bool,
+    /// 「只看稳定请求」筛选开关按钮。
     pub btn_stabilize: DRectButton,
+    /// 该开关是否开启。
     pub show_stabilize: bool,
+    /// 当前用户权限，决定是否展示「未审核/稳定请求」筛选项。
     pub perms: Permissions,
 
+    /// 取消按钮。
     btn_cancel: DRectButton,
+    /// 确认按钮。
     btn_confirm: DRectButton,
+    /// 「按评分筛选」按钮（筛选模式下替代取消/确认）。
     btn_rating: DRectButton,
+    /// 结果回传：`Some(true)` = 确认，`Some(false)` = 取消，`None` = 尚无结果。
     pub confirmed: Option<bool>,
+    /// 请求打开评分对话框（调用方读取后据此弹出 `RateDialog`）。
     pub show_rating: bool,
 }
 
+// 对话框的构造与交互。对话框不返回结果，而是把状态写进公开字段，由页面每帧读取；
+// 触摸事件在对话框内被完全消费（返回 true），避免穿透到底层页面。
 impl TagsDialog {
+    /// 创建对话框。`search_mode` 为 true 时启用筛选模式（多出 `unwanted` 标签区与筛选项）。
+    /// 补间距离 `-0.4`、时长 `0.5`，即自下方较缓地滑入。
     pub fn new(search_mode: bool) -> Self {
         Self {
             fader: Fader::new().with_distance(-0.4).with_time(0.5),
@@ -168,23 +235,28 @@ impl TagsDialog {
         }
     }
 
+    /// 用给定标签列表初始化内容：标签进 `tags`，分区经解析写回 `division`。
     pub fn set(&mut self, tags: Vec<String>) {
         self.division = self.tags.set(tags);
     }
 
+    /// 当前是否可见。
     pub fn showing(&self) -> bool {
         self.show
     }
 
+    /// 进入显示：启动入场补间。
     pub fn enter(&mut self, t: f32) {
         self.fader.sub(t);
     }
 
+    /// 收起：标记不显示并播放退场补间。
     pub fn dismiss(&mut self, t: f32) {
         self.show = false;
         self.fader.back(t);
     }
 
+    /// 对话框矩形。筛选模式内容更多，故底部 `feather` 较小以加高对话框。
     fn dialog_rect(&self) -> Rect {
         if self.unwanted.is_some() {
             Ui::dialog_rect().nonuniform_feather(0.04, 0.05)
@@ -193,6 +265,12 @@ impl TagsDialog {
         }
     }
 
+    /// 处理触摸，返回事件是否被消费（对话框展开时恒为 true，以免穿透到底层）。
+    ///
+    /// 阶段：① 过渡动画期间吞掉输入；② 触点落在对话框外且为按下起始则关闭；
+    /// ③ 依次把事件交给滚动区、两个标签区、分区按钮与各开关按钮，
+    /// 命中分区/标签/开关时都会 `halt` 滚动惯性（避免误触发后列表仍在滑动）；
+    /// ④ 取消/确认写回 `confirmed`，评分按钮置 `show_rating` 并关闭（跳转到评分筛选）。
     pub fn touch(&mut self, touch: &Touch, t: f32) -> bool {
         if self.fader.transiting() {
             return true;
@@ -253,6 +331,11 @@ impl TagsDialog {
         false
     }
 
+    /// 推进滚动与补间，并处理输入框回传。
+    ///
+    /// 补间完成后按结果切换 `show`（使退场动画期间仍可见）；标签输入按 `input_id` 分派到
+    /// `tags` 或 `unwanted`，若 id 不匹配（例如属于其它组件的输入框）则原样 `return_input` 交还，
+    /// 避免吞掉不属于本对话框的输入。
     pub fn update(&mut self, t: f32) {
         if let Some(done) = self.fader.done(t) {
             self.show = !done;
@@ -273,6 +356,13 @@ impl TagsDialog {
         }
     }
 
+    /// 绘制对话框。
+    ///
+    /// 阶段：① 全屏半透明遮罩 + 对话框背板，标题按模式显示 `filter`/`edit`；
+    /// ② 用 `Scroll` 承载内容，依次绘制：分区按钮行、筛选按钮行（每个筛选按钮按 `perms`
+    /// 决定是否展示，再按可见数量等分宽度）、「想要」标签区；
+    /// ③ 筛选模式下追加「不想要的」标题与标签区；④ 底部按钮：编辑模式为取消+确认，
+    /// 筛选模式为「按评分筛选」。滚动内容返回累计高度 `h` 供滚动容器使用。
     pub fn render(&mut self, ui: &mut Ui, t: f32) {
         self.fader.reset();
         if self.show || self.fader.transiting() {

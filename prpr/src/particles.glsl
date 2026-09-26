@@ -1,3 +1,14 @@
+// 【用途】粒子系统的 GLSL 公共代码片段（不是一个可直接编译的着色器）。它提供：
+//   1) 顶点属性与 uniform 的声明块（由 `DEF_VERTEX_ATTRIBUTES` 宏开关控制），
+//   2) 旋转矩阵与实例属性 → 世界坐标的变换函数（`particle_transform_vertex`），
+//   3) 精灵表（atlas）UV 偏移（`particle_transform_uv`），
+//   4) 顶点着色器共用的随机数与粒子生命周期查询工具（`rand`/`particle_ix`/`particle_lifetime`）。
+// 【使用位置】由 `prpr/src/particle.rs:441-452` 在构造 `Emitter` 时通过
+//   `macroquad::material::shaders::{preprocess_shader, PreprocessorConfig}` 以 include 方式
+//   注入到粒子顶点着色器中（见 `prpr/src/particle.rs` 末尾 `mod shader` 的 `VERTEX`）；
+//   后处理阶段的着色器不使用本文件。
+// 【注意】`#ifdef DEF_VERTEX_ATTRIBUTES` 之间是**属性声明块**，只有被注入到顶点着色器时才启用；
+//   片元着色器复用本文件时不会定义该宏，因此不会重复声明顶点属性。
 #ifdef DEF_VERTEX_ATTRIBUTES
 attribute vec3 in_attr_pos;
 attribute vec2 in_attr_uv;
