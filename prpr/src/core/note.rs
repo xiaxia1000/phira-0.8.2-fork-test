@@ -378,7 +378,17 @@ impl Note {
             ..self.color
         };
         color.a *= res.alpha * ctrl_obj.alpha.now_opt().unwrap_or(1.);
-        let spd = self.speed * ctrl_obj.y.now_opt().unwrap_or(1.) as f64;
+
+        // 这里判断是否要保持原有流速
+        let spd = self.speed
+            * ctrl_obj.y.now_opt().unwrap_or(1.) as f64
+            / (
+                if res.config.mods.contains(Mods::MAINTAIN_FLOWING_RATE) {
+                    res.config.speed.max(1e-3) as f64
+                } else { 1.0 }
+            );
+
+
 
         // 世界高度归一化：除以 `aspect_ratio` 让不同屏幕比例下的音符落点一致，
         // 乘 `spd` 则保证快慢速度段下的音符间距按视觉速度缩放。

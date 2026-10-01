@@ -43,6 +43,8 @@ bitflags! {
         const INSTANT_DEATH_AP = 0x0080;
         /// FC 暴毙：本局出现 Miss 立即结束（挑战 FC 用）；与 [`Mods::INSTANT_DEATH_AP`] 互斥。
         const INSTANT_DEATH_FC = 0x0100;
+        /// 保持原流速：在任何整体时间倍率下保持原本流速
+        const MAINTAIN_FLOWING_RATE = 0x0200;
 
         /// 不计入排行的标志组合：自动演奏 + 无着色器，服务端据此判定成绩无效。
         const UNRATED = Self::AUTOPLAY.bits() | Self::NO_SHADER.bits();

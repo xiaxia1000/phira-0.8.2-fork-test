@@ -123,6 +123,8 @@ mods-instant-death-fc = 突然死亡（FC）
 mods-instant-death-fc-sub = 连击中断立即失败
 mods-no-shader = 无着色器
 mods-no-shader-sub = 禁用着色器特效。*启用此 Mod 后无法上传成绩*
+mods-maintain-flowing-rate = 保持流动速率
+mods-maintain-flowing-rate-sub = 在变速时保持音符的下落速度
 
 rate-failed = 评分失败
 rate-done = 评分成功
