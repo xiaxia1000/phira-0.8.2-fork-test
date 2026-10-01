@@ -45,6 +45,9 @@ pub mod log;
 #[cfg(closed)]
 pub mod inner;
 
+/// 调试用快捷方式
+pub mod modify_base;
+
 /// 游戏主入口场景，各平台共用的场景实现（实现了 [`scene`] 中的场景约定）。
 pub use scene::Main;
 

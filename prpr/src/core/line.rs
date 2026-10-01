@@ -9,6 +9,7 @@
 //!    的模型矩阵栈承担，本模块因此不需要关心具体分辨率。
 
 use super::{chart::ChartSettings, object::CtrlObject, Anim, AnimFloat, BpmList, Matrix, Note, Object, Point, RenderConfig, Resource, Vector};
+use crate::modify_base::static_color_gradient::{StaticColorGradient, StaticColorGradientType};
 use crate::{
     ext::{get_viewport, NotNanExt, SafeTexture},
     judge::JudgeStatus,
@@ -432,7 +433,11 @@ impl JudgeLine {
                     // 线宽按是否被纵向放大分支：放大后用更细的固定线宽（0.0076），
                     // 否则用 0.01，避免放大时线体显得过粗。
                     JudgeLineKind::Normal => {
-                        let mut color = color.unwrap_or(res.judge_line_color);
+                        static J_LINE_COLOR: StaticColorGradient =
+                            StaticColorGradient::new(StaticColorGradientType::RGBTurning { s: 0.001, low: 0.3, high: 0.7 });
+
+                        // let mut color = color.unwrap_or(res.judge_line_color);
+                        let mut color = color.unwrap_or(J_LINE_COLOR.next_color());
                         color.a *= alpha.max(0.0);
                         let len = res.info.line_length;
                         draw_line(-len, 0., len, 0., if line_scaled { 0.0076 } else { 0.01 }, color);
