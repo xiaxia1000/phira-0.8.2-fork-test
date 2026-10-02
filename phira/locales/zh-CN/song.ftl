@@ -124,7 +124,9 @@ mods-instant-death-fc-sub = 连击中断立即失败
 mods-no-shader = 无着色器
 mods-no-shader-sub = 禁用着色器特效。*启用此 Mod 后无法上传成绩*
 mods-maintain-flowing-rate = 保持流动速率
-mods-maintain-flowing-rate-sub = 在变速时保持音符的下落速度
+mods-maintain-flowing-rate-sub = 在变速时保持音符的下落速度（会造成一些比较割裂的效果）
+mods-colorful-judge-line = 使用彩色判定线
+mods-colorful-judge-line-sub = 你真的需要吗？（会覆盖 AP/FC 指示器）
 
 rate-failed = 评分失败
 rate-done = 评分成功

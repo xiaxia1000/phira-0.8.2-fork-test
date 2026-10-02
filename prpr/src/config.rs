@@ -45,6 +45,8 @@ bitflags! {
         const INSTANT_DEATH_FC = 0x0100;
         /// 保持原流速：在任何整体时间倍率下保持原本流速
         const MAINTAIN_FLOWING_RATE = 0x0200;
+        /// 彩色判定线：你真的需要它吗？
+        const COLORFUL_JUDGELINE = 0x0400;
 
         /// 不计入排行的标志组合：自动演奏 + 无着色器，服务端据此判定成绩无效。
         const UNRATED = Self::AUTOPLAY.bits() | Self::NO_SHADER.bits();

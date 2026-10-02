@@ -1727,6 +1727,7 @@ impl SongScene {
             item(tl!("mods-instant-death-fc"), Some(tl!("mods-instant-death-fc-sub")), Mods::INSTANT_DEATH_FC);
             item(tl!("mods-no-shader"), Some(tl!("mods-no-shader-sub")), Mods::NO_SHADER);
             item(tl!("mods-maintain-flowing-rate"), Some(tl!("mods-maintain-flowing-rate-sub")), Mods::MAINTAIN_FLOWING_RATE);
+            item(tl!("mods-colorful-judge-line"), Some(tl!("mods-colorful-judge-line-sub")), Mods::COLORFUL_JUDGELINE);
             (width, h + 0.2)
         });
     }

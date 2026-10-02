@@ -90,6 +90,7 @@ review-not-loaded = Info is not loaded, please wait...
 review-edit-tags = Edit Tags
 review-edit-tags-failed = Failed to edit tags.
 review-edit-tags-done = Tags updated.
+
 mods = Mods
 mods-autoplay = Autoplay
 mods-autoplay-sub = Results will not be submitted when enabled.
@@ -111,6 +112,9 @@ mods-no-shader = No Shader
 mods-no-shader-sub = Disables shader effects. *YOU CAN'T UPLOAD SCORES WITH THIS MOD ENABLED*
 mods-maintain-flowing-rate = Maintain Flowing Rate
 mods-maintain-flowing-rate-sub = Keep streaming timing stable during speed changes
+mods-colorful-judge-line = Use colorful judge line
+mods-colorful-judge-line-sub = Do you really need it? (will cover the AP/FC indicator)
+
 rate-failed = Rate failed.
 rate-done = Rated successfully.
 need-update = Update Needed
