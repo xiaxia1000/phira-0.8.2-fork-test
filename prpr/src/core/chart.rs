@@ -14,6 +14,7 @@ use macroquad::prelude::*;
 use nalgebra::Rotation2;
 use sasa::AudioClip;
 use std::{cell::RefCell, collections::HashMap};
+use crate::config::ws;
 
 /// 谱面级附加内容：特效与（可选 feature 的）视频背景。
 #[derive(Default)]
@@ -268,9 +269,9 @@ impl Chart {
     /// 1. **视频最先绘制**：绑定判定线的视频用 `apply_model_of` 压入该线的对象矩阵，
     ///    于是视频随判定线一起平移/旋转并被其颜色调制；未绑定的视频以白色平铺。
     ///    视频属于背景，必须早于谱面内容。
-    /// 2. `apply_model_of` 施加 `(flip_x ? -1 : 1, -1)`：x 方向来自玩家的镜像 mod，
-    ///    y 固定取 -1 把谱面“y 向上”翻成屏幕坐标。此后所有谱面内容都在这套基准
-    ///    变换内绘制，因此镜像只需处理一次。
+    /// 2. `apply_model_of` 施加 `(flip_x ? -WORLD_SCALE : WORLD_SCALE, -WORLD_SCALE)`：x 方向来自玩家的镜像 mod，
+    ///    y 固定取 -WORLD_SCALE 把谱面“y 向上”翻成屏幕坐标。此后所有谱面内容都在这套基准
+    ///    变换内绘制，因此镜像只需处理一次。应用全局缩放。
     /// 3. 按 [`Chart::order`] 的 z 序逐线渲染；期间借出 BPM 表供判定线换算节拍，
     ///    画完立即 `drop`，避免后续步骤再次借用造成 panic。
     /// 4. `note_buffer.draw_all()` 把所有音符的顶点一次性提交，让同材质批次合并、
@@ -296,9 +297,10 @@ impl Chart {
                 video.render(res.time, res.aspect_ratio, WHITE);
             }
         }
-        // 步骤二：施加全局基准变换 `(flip_x ? -1 : 1, -1)`——x 按玩家的镜像 mod，
-        // y 固定翻转为屏幕方向；该变换包住整段谱面绘制，随后统一弹出。
-        res.apply_model_of(&Matrix::identity().append_nonuniform_scaling(&Vector::new(if res.config.flip_x() { -1. } else { 1. }, -1.)), |res| {
+        // 步骤二：施加全局基准变换 `(flip_x ? -WORLD_SCALE : WORLD_SCALE, -WORLD_SCALE)`——x 按玩家的镜像 mod，
+        // y 固定翻转为屏幕方向；该变换包住整段谱面绘制，随后统一弹出。应用全局缩放。
+        let ws = ws();
+        res.apply_model_of(&Matrix::identity().append_nonuniform_scaling(&Vector::new(if res.config.flip_x() { -ws } else { ws }, -ws)), |res| {
             // 步骤三：按 z 序逐线渲染。BPM 表以可变借用传给判定线（换算节拍要推进游标），
             // 画完立刻释放，避免后面再次借用同一 `RefCell` 引发 panic。
             let mut guard = self.bpm_list.borrow_mut();

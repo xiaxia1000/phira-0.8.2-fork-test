@@ -514,6 +514,7 @@ impl JudgeInner {
 pub mod inner;
 #[cfg(closed)]
 use inner::*;
+use crate::config::ws;
 
 /// 判定事件队列的元素类型：`(判定时刻, 判定线 id, note id, 结果)`。
 ///
@@ -740,11 +741,11 @@ impl Judge {
     /// 生成一个把屏幕像素坐标变换到游戏归一化坐标的闭包。
     ///
     /// 变换规则：
-    /// * x：视口左边缘 → -1、右边缘 → +1；
+    /// * x：视口左边缘 → -WORLD_SCALE、右边缘 → +WORLD_SCALE；
     /// * y：先处理坐标系差异——`Touch::position` 的原点在屏幕左上角，而 GL 视口
     ///   `(x, y, w, h)` 的原点在左下角，故用 `screen_height() - (vp.1 + vp.3)` 换算出视口
-    ///   顶边在屏幕坐标系中的位置；再线性映射到 [-1, 1]，最后除以宽高比，使 y 落在
-    ///   [-1/aspect_ratio, 1/aspect_ratio]，与谱面 / 判定线使用的坐标尺度一致；
+    ///   顶边在屏幕坐标系中的位置；再线性映射到 [-WORLD_SCALE, WORLD_SCALE]，最后除以宽高比，使 y 落在
+    ///   [-1/aspect_ratio*WORLD_SCALE, 1/aspect_ratio*WORLD_SCALE]，与谱面 / 判定线使用的坐标尺度一致；
     /// * `flip_x`：谱面开启左右镜像时触摸 x 也要取反，否则镜像出的谱面与输入对不上。
     ///
     /// 视口在闭包创建时读取一次（`get_viewport`），所以同一帧内视口不能再变——
@@ -756,7 +757,7 @@ impl Judge {
             touch.position = vec2(
                 (p.x - vp.0 as f32) / vp.2 as f32 * 2. - 1.,
                 ((p.y - (screen_height() - (vp.1 + vp.3) as f32)) / vp.3 as f32 * 2. - 1.) / (vp.2 as f32 / vp.3 as f32),
-            );
+            ) * (1. / ws());
             if flip_x {
                 touch.position.x *= -1.;
             }

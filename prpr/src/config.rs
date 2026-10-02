@@ -4,15 +4,31 @@
 //! 本模块只负责“设置的表示与持久化结构”，不涉及设置界面；
 //! 所有字段都以 camelCase 序列化，与前端 / 旧版客户端保持字节级兼容。
 
+use atomic_float::AtomicF32;
 use bitflags::bitflags;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::Ordering;
 
 /// 加载界面展示的提示语，`tips.txt` 中的每一行（含空行）对应一个元素。
 ///
 /// 用 `include_str!` 在编译期嵌入文本，配合 [`Lazy`] 延迟到首次访问才切分，
 /// 避免启动时为不看提示的场景付出解析开销；全局只读，故可安全跨线程共享。
 pub static TIPS: Lazy<Vec<String>> = Lazy::new(|| include_str!("tips.txt").split('\n').map(str::to_owned).collect());
+
+/// 在 ['GameScene'] 场景下全局屏幕缩放（包括所有渲染、ui、判定逻辑）
+/// 生命周期太复杂了 TODO: 改为作为配置的一部分，可以由事件驱动同步到各处渲染
+pub static WORLD_SCALE: AtomicF32 = AtomicF32::new(1.0);
+#[inline]
+/// 快捷加载 WORLD_SCALE
+pub fn ws() -> f32 { WORLD_SCALE.load(Ordering::Relaxed) }
+/// 快捷重置 WORLD_SCALE
+pub fn reset_ws() { WORLD_SCALE.store(1.0, Ordering::Relaxed) }
+
+/// 给 ['Mods::REDUCE_WORLD_SIZE'] 使用的目标缩放大小
+pub const REDUCE_WORLD_SIZE_TARGET: f32 = 0.33;
+/// 给 ['Mods::REDUCE_WORLD_SIZE'] 使用的目标缩放时间
+pub const REDUCE_WORLD_SIZE_SECS: f32 = 5.0;
 
 // 玩法修饰符集合：以位标志存储，便于一次性序列化并与旧客户端互换。
 // 注意这是宏调用，上方不能用文档注释，故此处用普通注释。
@@ -47,6 +63,8 @@ bitflags! {
         const MAINTAIN_FLOWING_RATE = 0x0200;
         /// 彩色判定线：你真的需要它吗？
         const COLORFUL_JUDGELINE = 0x0400;
+        /// 缩小谱面（在 ['GameScene'] 场景下缩小全部元素）：你不会真的要这样打歌吧
+        const REDUCE_WORLD_SIZE = 0x0800;
 
         /// 不计入排行的标志组合：自动演奏 + 无着色器，服务端据此判定成绩无效。
         const UNRATED = Self::AUTOPLAY.bits() | Self::NO_SHADER.bits();

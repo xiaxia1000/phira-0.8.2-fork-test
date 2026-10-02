@@ -43,6 +43,7 @@ intl-memoizer = "0.5.3"
 libc = "0.2.183"
 lru = { workspace = true }
 lyon = { workspace = true }
+atomic_float = "1.1.0"
 
 macroquad = { workspace = true, default-features = false }
 miniquad = { workspace = true }

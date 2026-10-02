@@ -1728,6 +1728,7 @@ impl SongScene {
             item(tl!("mods-no-shader"), Some(tl!("mods-no-shader-sub")), Mods::NO_SHADER);
             item(tl!("mods-maintain-flowing-rate"), Some(tl!("mods-maintain-flowing-rate-sub")), Mods::MAINTAIN_FLOWING_RATE);
             item(tl!("mods-colorful-judge-line"), Some(tl!("mods-colorful-judge-line-sub")), Mods::COLORFUL_JUDGELINE);
+            item(tl!("mods-reduce-world-size"), Some(tl!("mods-reduce-world-size-sub")), Mods::REDUCE_WORLD_SIZE);
             (width, h + 0.2)
         });
     }

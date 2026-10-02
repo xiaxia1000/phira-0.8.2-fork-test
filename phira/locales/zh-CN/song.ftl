@@ -127,6 +127,8 @@ mods-maintain-flowing-rate = 保持流动速率
 mods-maintain-flowing-rate-sub = 在变速时保持音符的下落速度（会造成一些比较割裂的效果）
 mods-colorful-judge-line = 使用彩色判定线
 mods-colorful-judge-line-sub = 你真的需要吗？（会覆盖 AP/FC 指示器）
+mods-reduce-world-size = 缩小谱面
+mods-reduce-world-size-sub = 你不会真的要这样打歌吧！？
 
 rate-failed = 评分失败
 rate-done = 评分成功

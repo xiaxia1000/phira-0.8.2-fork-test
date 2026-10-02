@@ -59,6 +59,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use std::sync::atomic::Ordering;
 use tracing::{debug, warn};
 
 /// 暂停按钮的双击保护间隔（秒）。
@@ -75,6 +76,8 @@ const PAUSE_CLICK_INTERVAL: f32 = 0.7;
 mod inner;
 #[cfg(closed)]
 use inner::*;
+use crate::config::{reset_ws, ws, REDUCE_WORLD_SIZE_SECS, REDUCE_WORLD_SIZE_TARGET, WORLD_SCALE};
+use crate::core::Matrix;
 
 /// 曲目播放结束后、进入结算前的等待时间（秒）。
 ///
@@ -1259,6 +1262,7 @@ impl Scene for GameScene {
     ///    `None` 表示直接渲染到屏幕；
     /// 3. 同步时间轴参数（流速、是否自动校正）并整体复位（`reset!`）；
     /// 4. 显式设置相机，并置 `first_in = true`——练习模式据此在首帧自动暂停，先让玩家设区间。
+    /// 5. 防御性地设置WORLD_SCALE
     ///
     /// # Errors
     /// 音乐创建失败时返回错误。
@@ -1275,6 +1279,8 @@ impl Scene for GameScene {
         reset!(self, self.res, tm);
         set_camera(&self.res.camera);
         self.first_in = true;
+        // 重置世界缩放
+        reset_ws();
         Ok(())
     }
 
@@ -1293,6 +1299,8 @@ impl Scene for GameScene {
         }
         #[cfg(target_env = "ohos")]
         miniquad::native::set_interceptor_state(false);
+        // 重置世界缩放
+        reset_ws();
         Ok(())
     }
 
@@ -1305,6 +1313,8 @@ impl Scene for GameScene {
         if !matches!(self.state, State::Playing) {
             tm.resume();
         }
+        // 重置世界缩放
+        reset_ws();
         Ok(())
     }
 
@@ -1355,10 +1365,14 @@ impl Scene for GameScene {
         }
         // ---- 阶段 4：相位状态机 ----
         // 每个分支都返回「本帧应当使用的时间」；相位的切换只在这里发生。
+        // 同时设置世界缩放
         let offset = self.offset();
         let time = tm.now();
         let time = match self.state {
             State::Starting => {
+                // 重置世界缩放
+                reset_ws();
+
                 // 淡入结束：置满透明度、进入 BeforeMusic，并把时间轴定位到播放起点——
                 // 普通模式定位到 offset（负偏移会被直接跳过），练习模式定位到区间起点。
                 if time >= Self::BEFORE_TIME {
@@ -1403,6 +1417,8 @@ impl Scene for GameScene {
                 }
             }
             State::BeforeMusic => {
+                // 重置世界缩放
+                reset_ws();
                 // 时间轴越过 0 才开始播放音乐（保证音频从 0 秒起播，
                 // 而不是从中途某处开始），随后进入 Playing。
                 // 播放前检查暂停状态：练习模式首帧自动暂停时不能直接开播。
@@ -1423,9 +1439,20 @@ impl Scene for GameScene {
                     #[cfg(target_env = "ohos")]
                     miniquad::native::set_interceptor_state(false);
                 }
+                // 打开缩小谱面配置时的世界缩放
+                // 渐入线性插值
+                if self.res.config.mods.contains(Mods::REDUCE_WORLD_SIZE) {
+                    let t = REDUCE_WORLD_SIZE_SECS.min(time as f32) / REDUCE_WORLD_SIZE_SECS;
+                    WORLD_SCALE.store(
+                        1.0 + t * (REDUCE_WORLD_SIZE_TARGET - 1.0),
+                        Ordering::Relaxed
+                    );
+                }
                 time
             }
             State::Ending => {
+                // 重置世界缩放
+                reset_ws();
                 // t = 曲末之后再经过的时间。
                 // 超过 AFTER_TIME + 0.3 说明画面已完全淡出，此时一次性完成结算与场景切换请求。
                 let t = time - self.res.track_length - WAIT_TIME;
@@ -1519,6 +1546,10 @@ impl Scene for GameScene {
                 self.res.track_length
             }
         };
+        if tm.paused() {
+            // 重置世界缩放
+            reset_ws();
+        }
         // ---- 阶段 5：换算谱面时间 ----
         // 减去总偏移并夹到 0：负偏移（谱面前置留白）会被跳过，保证 res.time 恒非负。
         let time = (time - offset as f64).max(0.);
@@ -1757,8 +1788,10 @@ impl Scene for GameScene {
         // 用一个「不带视口」的临时相机清屏并绘制背景：存在 chart_target 时整块 FBO 都要填底色，
         // 因此 viewport 传 None（否则只会清掉局部区域）。绘制前后成对 push / pop 相机状态。
         push_camera_state();
+        // 背景缩放相机（在 clear_background 与 draw_background 之间）
+        let ws = ws();
         set_camera(&Camera2D {
-            zoom: vec2(1., -asp),
+            zoom: vec2(ws, -asp * ws),
             viewport: if res.chart_target.is_some() { None } else { Some(ui.viewport) },
             render_target: chart_onto,
             ..Default::default()
@@ -1799,18 +1832,30 @@ impl Scene for GameScene {
         );
 
         // ---- 8. 叠加层 ----
-        // Bad 提示：retain 的闭包返回 false 表示该提示已播放完毕，可以移除。
-        self.bad_notes.retain(|dummy| dummy.render(res));
+        // Bad 提示：retain 的闭包返回 false 表示该提示已播放完毕，可以移除。渲染 + 缩放
+        let s = Matrix::identity().append_nonuniform_scaling(&Vector::new(ws, ws));
+        res.with_model(s, |res| {
+            self.bad_notes.retain(|dummy| dummy.render(res))
+        });
         // 粒子推进：dt 取两次 render 之间的真实时间（用 mem::replace 顺手把 last_update_time
         // 更新为本次时间），因此粒子动画速度不受逻辑帧率 / 暂停影响。
         let t = tm.real_time();
         let dt = (t - std::mem::replace(&mut self.last_update_time, t)) as f32;
         if res.config.particle {
+            // 粒子缩放相机
+            push_camera_state();
+            set_camera(&Camera2D {
+                zoom: vec2(ws, -asp * ws),
+                render_target: res.chart_target.as_ref().map(|it| it.output()).or(res.camera.render_target),
+                viewport: Some(ui.viewport),
+                ..Default::default()
+            });
             res.emitter.draw(dt);
+            pop_camera_state();
         }
         // HUD 先画，暂停 / 练习面板后画：后画的覆盖关系在上，保证面板压在 HUD 之上。
-        self.ui(ui, tm)?;
-        self.overlay_ui(ui, tm)?;
+        ui.with(s, |ui| self.ui(ui, tm))?;
+        ui.with(s, |ui| self.overlay_ui(ui, tm))?;
 
         // ---- 9. TweakOffset 面板 ----
         // 它需要「全屏视口 + 屏幕宽高比」的独立相机（不受谱面视口限制），
@@ -1830,12 +1875,13 @@ impl Scene for GameScene {
 
         // ---- 10. 场景级后处理 ----
         // 谱面没有任何 effect 且特效被配置关闭（no_effect）时整段跳过。
-        // 这里用 zoom = (1, asp) 的正向相机：effect 采样的是「已经画好的画面纹理」，
+        // 这里用 zoom = (WORLD_SCALE, asp * WORLD_SCALE) 的正向相机：effect 采样的是「已经画好的画面纹理」，
         // 不需要谱面坐标系，用正向 zoom 才能让纹理方向正确。
         if !self.res.no_effect && !self.effects.is_empty() {
             push_camera_state();
             set_camera(&Camera2D {
-                zoom: vec2(1., asp),
+                // 世界缩放
+                zoom: vec2(ws, asp * ws),
                 ..Default::default()
             });
             for e in &self.effects {
@@ -1891,6 +1937,9 @@ impl Scene for GameScene {
     /// 退出时按模式决定回传内容：`Normal` 回传本场景最佳成绩（供上层刷新分数 / 榜单）；
     /// `TweakOffset` 回传 `None`（等价于「未修改偏移」）；`Exercise` / `NoRetry` / `View` 无结果。
     fn next_scene(&mut self, tm: &mut TimeManager) -> NextScene {
+        // 重置世界缩放
+        reset_ws();
+
         if self.should_exit {
             // 收尾清理：先把时间轴从暂停状态恢复，并复位流速与自动校正开关。
             if tm.paused() {

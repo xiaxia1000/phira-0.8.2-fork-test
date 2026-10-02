@@ -114,6 +114,8 @@ mods-maintain-flowing-rate = Maintain Flowing Rate
 mods-maintain-flowing-rate-sub = Keep streaming timing stable during speed changes
 mods-colorful-judge-line = Use colorful judge line
 mods-colorful-judge-line-sub = Do you really need it? (will cover the AP/FC indicator)
+mods-reduce-world-size = reduce the size of screen
+mods-reduce-world-size-sub = You’re not really going to play the song like this, are you!?
 
 rate-failed = Rate failed.
 rate-done = Rated successfully.
