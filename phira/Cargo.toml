@@ -14,6 +14,13 @@ chat = []
 aa = []
 hykb = []
 event_debug = []
+closed-source-libs = [
+    "lyon",
+    "obfstr",
+    "pollster",
+    "regex",
+    "url",
+]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -44,20 +51,20 @@ image = { workspace = true, default-features = false, features = [
 inputbox = { workspace = true }
 logos = "0.16.1"
 lru = { workspace = true }
-lyon = { workspace = true }
+lyon = { workspace = true, optional = true }
 macroquad = { workspace = true, default-features = false }
 
 miniquad = { workspace = true }
 nalgebra = { workspace = true }
-obfstr = "0.4.4"
+obfstr = { version = "0.4.4", optional = true }
 once_cell = { workspace = true }
 phira-mp-client = { workspace = true }
 phira-mp-common = { workspace = true }
-pollster = { workspace = true }
+pollster = { workspace = true, optional = true }
 prpr = { workspace = true, features = ["log"], default-features = false }
 prpr-l10n = { workspace = true }
 rand = { workspace = true }
-regex = { workspace = true }
+regex = { workspace = true, optional = true }
 reqwest = { workspace = true, default-features = false, features = [
     "json",
     "stream",
@@ -80,7 +87,7 @@ tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
-url = { workspace = true }
+url = { workspace = true, optional = true }
 walkdir = { workspace = true }
 zip = { workspace = true, features = ["chrono"] }
 zstd = "0.13"
@@ -113,8 +120,8 @@ objc2-ui-kit = { workspace = true }
 dotenv-build = "0.1"
 
 [dev-dependencies]
-fluent = { workspace = true }
-fluent-syntax = { workspace = true }
+# fluent = { workspace = true }
+# fluent-syntax = { workspace = true }
 
 [lints]
 workspace = true

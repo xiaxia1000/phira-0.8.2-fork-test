@@ -10,11 +10,28 @@ license = { workspace = true }
 default = ["log"]
 video = ["dep:prpr-avc"]
 log = ["dep:tracing-subscriber", "dep:colored"]
+closed-source-libs = [
+	"base64",
+	"fluent",
+	"fluent-syntax",
+	"hex",
+	"hmac",
+	"intl-memoizer",
+	"lru",
+	"miniz_oxide",
+	"obfstr",
+	"sha2",
+	"subtle",
+	"symphonia",
+	"sys-locale",
+	"unic-langid",
+	"uuid",
+]
 
 [dependencies]
 anyhow = { workspace = true }
 async-trait = { workspace = true }
-base64 = { workspace = true }
+base64 = { workspace = true, optional = true }
 bitflags = { workspace = true, features = ["serde"] }
 byteorder = "1.5.0"
 cfg-if = "1.0.4"
@@ -25,11 +42,11 @@ colored = { version = "3.1.1", optional = true }
 concat-string = "1.0.1"
 csv = "1.4.0"
 fastblur = "0.1.1"
-fluent = { workspace = true }
-fluent-syntax = { workspace = true }
+fluent = { workspace = true, optional = true }
+fluent-syntax = { workspace = true, optional = true }
 glyph_brush = "0.7.12"
-hex = { workspace = true }
-hmac = "0.12.1"
+hex = { workspace = true, optional = true }
+hmac = { version = "0.12.1", optional = true }
 image = { workspace = true, default-features = false, features = [
 	"bmp",
 	"gif",
@@ -39,17 +56,17 @@ image = { workspace = true, default-features = false, features = [
 	"webp",
 ] }
 inputbox = { workspace = true }
-intl-memoizer = "0.5.3"
+intl-memoizer = { version = "0.5.3", optional = true }
 libc = "0.2.183"
-lru = { workspace = true }
+lru = { workspace = true, optional = true }
 lyon = { workspace = true }
 atomic_float = "1.1.0"
 
 macroquad = { workspace = true, default-features = false }
 miniquad = { workspace = true }
-miniz_oxide = "0.9.1"
+miniz_oxide = { version = "0.9.1", optional = true }
 nalgebra = { workspace = true }
-obfstr = "0.4.4"
+obfstr = { version = "0.4.4", optional = true }
 once_cell = { workspace = true }
 ordered-float = "5.1.0"
 phf = { version = "0.13.1", features = ["macros"] }
@@ -61,8 +78,8 @@ regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
-sha2 = { workspace = true }
-subtle = "2.6.1"
+sha2 = { workspace = true, optional = true }
+subtle = { version = "2.6.1", optional = true }
 symphonia = { version = "0.5", features = [
 	"flac",
 	"mp3",
@@ -70,13 +87,13 @@ symphonia = { version = "0.5", features = [
 	"vorbis",
 	"wav",
 	"pcm",
-] }
-sys-locale = { workspace = true }
+], optional = true }
+sys-locale = { workspace = true, optional = true }
 tempfile = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"], optional = true }
-unic-langid = { version = "0.9.6", features = ["macros"] }
-uuid = { workspace = true, features = ["v4"] }
+unic-langid = { version = "0.9.6", features = ["macros"], optional = true }
+uuid = { workspace = true, features = ["v4"], optional = true }
 zip = { workspace = true, default-features = false, features = ["deflate"] }
 
 [target.'cfg(not(any(target_os = "android", target_env = "ohos")))'.dependencies]
@@ -116,10 +133,10 @@ objc2-ui-kit = { workspace = true, features = ["objc2-uniform-type-identifiers"]
 objc2-uniform-type-identifiers = { workspace = true }
 
 [build-dependencies]
-walkdir = { workspace = true }
+# walkdir = { workspace = true }
 
 [dev-dependencies]
-walkdir = { workspace = true }
+# walkdir = { workspace = true }
 
 [lints]
 workspace = true
