@@ -20,6 +20,7 @@ use miniquad::{RenderPass, Texture, TextureParams, TextureWrap};
 use nalgebra::Rotation2;
 use serde::Deserialize;
 use std::cell::RefCell;
+use crate::config::Mods;
 
 /// 可绑定到判定线上的 HUD 元素类型。
 ///
@@ -433,11 +434,16 @@ impl JudgeLine {
                     // 线宽按是否被纵向放大分支：放大后用更细的固定线宽（0.0076），
                     // 否则用 0.01，避免放大时线体显得过粗。
                     JudgeLineKind::Normal => {
+                        // =========================================================================
                         static J_LINE_COLOR: StaticColorGradient =
                             StaticColorGradient::new(StaticColorGradientType::RGBTurning { s: 0.001, low: 0.3, high: 0.7 });
 
-                        // let mut color = color.unwrap_or(res.judge_line_color);
-                        let mut color = color.unwrap_or(J_LINE_COLOR.next_color());
+                        let mut color = color.unwrap_or(
+                            if res.config.mods.contains(Mods::COLORFUL_JUDGELINE) {
+                                J_LINE_COLOR.next_color()
+                            } else { res.judge_line_color }
+                        );
+                        // =========================================================================
                         color.a *= alpha.max(0.0);
                         let len = res.info.line_length;
                         draw_line(-len, 0., len, 0., if line_scaled { 0.0076 } else { 0.01 }, color);
@@ -593,7 +599,7 @@ impl JudgeLine {
             // 取整数部分 w 表示不同的隐藏/预现策略；未在设置中开启该特性时直接不绘制。
             //   1            → 完全不可见
             //   2            → 不绘制线下音符
-            //   100..1000    → 按 (w - 100)/10 秒提前出现
+            //   100..1000    → 按 (w - 100)/10 拍提前出现
             //   1000..2000   → 预留（尚未实现）
             if alpha < 0.0 {
                 if !settings.pe_alpha_extension {
