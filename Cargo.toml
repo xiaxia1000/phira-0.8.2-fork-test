@@ -73,11 +73,9 @@ walkdir = "2.5.0"
 zip = { version = "8.3.0", default-features = false }
 
 [profile.release]
-opt-level = 2
+opt-level = 3
 strip = true
 
 [profile.dev.package."*"]
 opt-level = 2
 
-[workspace.lints.cargo]
-unused_dependencies = "allow"

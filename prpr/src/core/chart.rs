@@ -14,7 +14,7 @@ use macroquad::prelude::*;
 use nalgebra::Rotation2;
 use sasa::AudioClip;
 use std::{cell::RefCell, collections::HashMap};
-use crate::config::ws;
+use crate::config::{ws, Mods};
 
 /// 谱面级附加内容：特效与（可选 feature 的）视频背景。
 #[derive(Default)]
@@ -173,7 +173,12 @@ impl Chart {
                 Object::new_rotation_wrt_point(Rotation2::new(-obj.rotation.now().to_radians()), Vector::new(rotation_point.0, rotation_point.1));
             ui.with(Matrix::new_translation(&tr) * ro * scale, |ui| ui.alpha(obj.now_alpha().max(0.), |ui| f(ui, color)))
         } else {
-            f(ui, WHITE)
+            f(
+                ui,
+                if res.config.mods.contains(Mods::COLORFUL_JUDGELINE) {
+                    res.judge_line_color
+                } else { WHITE },
+            )
         }
     }
 
